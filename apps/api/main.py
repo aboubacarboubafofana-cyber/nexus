@@ -1,16 +1,14 @@
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from loguru import logger
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from groq import Groq
+from dotenv import load_dotenv
+import os
 
-app = FastAPI(
-    title="NEXUS API",
-    description="Backend de l'assistant IA multi-agents",
-    version="0.1.0",
-)
+load_dotenv()
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,31 +18,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 class ChatRequest(BaseModel):
     message: str
 
-
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {"name": "NEXUS API", "status": "ok", "version": "0.1.0"}
+    with open("index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
-
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
-
-
-@app.get("/chat.html")
-def serve_chat():
-    return FileResponse(Path(__file__).parent / "chat.html")
-
-
-@app.post("/chat")
-async def chat(req: ChatRequest):
-    return {"response": f"Tu as dit : {req.message}"}
-
-
-@app.on_event("startup")
-def startup():
-    logger.info("NEXUS API démarrée")
+@app.post("/api/chat")
+def chat(request: ChatRequest):
+    try:
+        completion = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": "Tu es NEXUS, un assistant IA intelligent. Réponds en français."},
+                {"role": "user", "content": request.message}
+            ],
+        )
+        return {"response": completion.choices[0].message.content}
+    except Exception as e:
+        return {"response": f"Erreur : {str(e)}"}
