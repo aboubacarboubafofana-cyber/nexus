@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS IA</title>
+    <style>
+        body { background: #121212; color: #fff; font-family: sans-serif; margin: 0; padding: 20px; }
+        #chat { height: 60vh; overflow-y: auto; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 15px; background: #1e1e1e; }
+        .msg-user { color: #4db8ff; text-align: right; margin: 10px 0; }
+        .msg-bot { color: #a8ff60; text-align: left; margin: 10px 0; }
+        .input-box { display: flex; gap: 10px; }
+        input { flex: 1; padding: 15px; border-radius: 8px; border: none; background: #333; color: #fff; font-size: 16px; }
+        button { padding: 15px 25px; background: #4db8ff; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; color: #000; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">NEXUS</h1>
+    <div id="chat"></div>
+    <div class="input-box">
+        <input type="text" id="msg" placeholder="Écris ton message..." onkeypress="if(event.key==='Enter') send()">
+        <button onclick="send()">Envoyer</button>
+    </div>
+
+    <script>
+        async function send() {
+            const input = document.getElementById('msg');
+            const chat = document.getElementById('chat');
+            const message = input.value;
+            if (!message) return;
+
+            chat.innerHTML += `<div class="msg-user"><b>Toi:</b> ${message}</div>`;
+            input.value = '';
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: message})
+                });
+                const data = await res.json();
+                chat.innerHTML += `<div class="msg-bot"><b>NEXUS:</b> ${data.response}</div>`;
+            } catch (e) {
+                chat.innerHTML += `<div class="msg-bot"><b>NEXUS:</b> Erreur de connexion.</div>`;
+            }
+            chat.scrollTop = chat.scrollHeight;
+        }
+    </script>
+</body>
+</html>
