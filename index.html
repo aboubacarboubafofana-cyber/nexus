@@ -501,5 +501,33 @@
         renderAll();
         if (window.speechSynthesis) speechSynthesis.getVoices();
     </script>
+    <script>
+    // Fonction pour ajouter des boutons Copier sur tous les blocs de code
+    function ajouterBoutonsCopier() {
+        document.querySelectorAll('pre code').forEach((block) => {
+            // Vérifier si le bouton existe déjà
+            if (block.parentElement.querySelector('.btn-copier')) return;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-copier';
+            btn.innerText = 'Copier';
+            btn.style.cssText = 'position:absolute; top:5px; right:5px; padding:4px 8px; background:#e6c27a; color:#1a0812; border:none; border-radius:4px; font-size:12px; cursor:pointer; z-index: 10;';
+            
+            block.parentElement.style.position = 'relative';
+            block.parentElement.appendChild(btn);
+
+            btn.addEventListener('click', () => {
+                navigator.clipboard.writeText(block.innerText);
+                btn.innerText = 'Copié !';
+                setTimeout(() => btn.innerText = 'Copier', 2000);
+            });
+        });
+    }
+
+    // Lancer la fonction dès que la page charge
+    document.addEventListener('DOMContentLoaded', ajouterBoutonsCopier);
+    // Et relancer la fonction à chaque nouveau message
+    setInterval(ajouterBoutonsCopier, 1000);
+    </script>
 </body>
 </html>
