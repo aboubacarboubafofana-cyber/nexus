@@ -32,7 +32,7 @@ def root():
 def chat(request: ChatRequest):
     try:
         completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b".
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "system", "content": "Tu es NEXUS, un assistant IA intelligent. Réponds en français."},
                 {"role": "user", "content": request.message}
