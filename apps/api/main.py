@@ -1,10 +1,12 @@
+import os
+import base64
+import requests
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
@@ -28,11 +30,11 @@ app.add_middleware(
 )
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 TEXT_MODEL = os.getenv("TEXT_MODEL", "openai/gpt-oss-120b")
 VISION_MODELS = [
     os.getenv("VISION_MODEL", "qwen/qwen3.8-27b"),
-    "qwen/qwen3.8-27b",
 ]
 
 
@@ -41,6 +43,26 @@ class ChatRequest(BaseModel):
     history: list = []
     lang: str = "auto"
     image: str = ""
+
+
+# --- FONCTION POUR GÉNÉRER UNE IMAGE AVEC HUGGING FACE ---
+def generer_image_hf(prompt: str):
+    url = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {"inputs": prompt}
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        if response.status_code == 200:
+            img_base64 = base64.b64encode(response.content).decode("utf-8")
+            return img_base64
+        else:
+            return None
+    except Exception:
+        return None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -75,10 +97,7 @@ def chat(request: ChatRequest):
         if request.lang == "auto":
             lang_rule = "Réponds dans la langue utilisée par l'utilisateur."
         elif request.lang == "Bambara":
-            lang_rule = (
-                "Réponds en bambara simple (alphabet latin). "
-                "Si tu n'es pas sûr d'un mot, ajoute une courte explication en français."
-            )
+            lang_rule = "Réponds en bambara simple (alphabet latin). Si tu n'es pas sûr d'un mot, ajoute une courte explication en français."
         else:
             lang_rule = f"Réponds en {request.lang}."
 
@@ -95,6 +114,28 @@ def chat(request: ChatRequest):
             if isinstance(m, dict) and m.get("role") in ("user", "assistant")
         ]
 
+        # --- DÉTECTION DEMANDE D'IMAGE ---
+        mots_cles_image = ["crée", "génère", "dessine", "affiche", "image", "photo"]
+        if any(mot in request.message.lower() for mot in mots_cles_image) and not request.image:
+            prompt_visuel_response = client.chat.completions.create(
+                model=TEXT_MODEL,
+                messages=[
+                    {"role": "system", "content": "Tu es un expert en génération d'images. Transforme la demande en un prompt visuel très détaillé en anglais. Ne réponds QUE par le prompt."},
+                    {"role": "user", "content": request.message}
+                ]
+            )
+            prompt_visuel = prompt_visuel_response.choices[0].message.content
+            img_b64 = generer_image_hf(prompt_visuel)
+            
+            if img_b64:
+                return {
+                    "response": "Voici l'image que j'ai générée pour toi :",
+                    "image": f"data:image/png;base64,{img_b64}"
+                }
+            else:
+                return {"response": "Je n'ai pas pu générer l'image, désolé."}
+
+        # --- GESTION DE L'IMAGE ENVOYÉE ---
         if request.image:
             user_msg = {
                 "role": "user",
@@ -113,6 +154,7 @@ def chat(request: ChatRequest):
                     last_error = e
             return {"response": f"Erreur de lecture d'image : {str(last_error)}"}
 
+        # --- TEXTE NORMAL ---
         completion = client.chat.completions.create(
             model=TEXT_MODEL,
             messages=[{"role": "system", "content": system}, *past,
