@@ -1,12 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response, JSONResponse
 from pydantic import BaseModel
 from groq import Groq
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
+LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+<radialGradient id="bg" cx="25%" cy="0%" r="110%"><stop offset="0" stop-color="#4a1230"/><stop offset="0.6" stop-color="#1a0812"/><stop offset="1" stop-color="#0d0408"/></radialGradient>
+<linearGradient id="tx" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e6c27a"/><stop offset="1" stop-color="#d96a8c"/></linearGradient>
+</defs>
+<rect width="512" height="512" fill="url(#bg)"/>
+<text x="256" y="292" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-weight="bold" font-size="124" fill="url(#tx)">Fof-IA</text>
+</svg>"""
 
 app = FastAPI()
 
@@ -38,6 +47,26 @@ class ChatRequest(BaseModel):
 def root():
     with open("index.html", "r", encoding="utf-8") as f:
         return f.read()
+
+
+@app.get("/logo.svg")
+def logo():
+    return Response(content=LOGO_SVG, media_type="image/svg+xml")
+
+
+@app.get("/manifest.json")
+def manifest():
+    return JSONResponse({
+        "name": "Fof-IA",
+        "short_name": "Fof-IA",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#1a0812",
+        "theme_color": "#2a0d1c",
+        "icons": [
+            {"src": "/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+        ],
+    })
 
 
 @app.post("/api/chat")
