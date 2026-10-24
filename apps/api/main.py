@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 from pydantic import BaseModel
 from groq import Groq
-from dotenv import load_dotenv
+from dotenv import load_dotenv 
 
 load_dotenv()
 
