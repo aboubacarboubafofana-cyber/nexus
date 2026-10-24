@@ -10,7 +10,14 @@
     <meta name="theme-color" content="#2a0d1c">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
     <style>
-        * { user-select: text !important; -webkit-user-select: text !important; }
+        /* On désactive la sélection partout par défaut */
+body { user-select: none; -webkit-user-select: none; }
+
+/* On l'active UNIQUEMENT pour les bulles de message */
+.msg-user, .msg-bot, .msg-bot pre, .msg-bot code { 
+    user-select: text !important; 
+    -webkit-user-select: text !important; 
+}
         * { box-sizing: border-box; }
         :root { --gold: #e6c27a; --rose: #d96a8c; }
         body {
