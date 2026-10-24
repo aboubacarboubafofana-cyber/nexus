@@ -88,24 +88,31 @@ class ImageRequest(BaseModel):
 
 @app.post("/api/image")
 def make_image(req: ImageRequest):
-    # 1. On essaie Pollinations d'abord (gratuit, sans clé)
-    img_b64 = generer_image_pollinations(req.prompt)
-    if img_b64:
-        return {"image": "data:image/jpeg;base64," + img_b64}
-
-    # 2. Si ça échoue, on tente Hugging Face
-    token = os.getenv("HF_TOKEN")
-    if not token:
-        return {"error": "La clé HF_TOKEN est absente."}
-    
     try:
-        from huggingface_hub import InferenceClient
-        hf = InferenceClient(api_key=token)
-        img = hf.text_to_image(req.prompt[:500], model="black-forest-labs/FLUX.1-schnell")
-        buf = io.BytesIO()
-        img.convert("RGB").save(buf, format="JPEG", quality=88)
-        b64 = base64.b64encode(buf.getvalue()).decode()
-        return {"image": "data:image/jpeg;base64," + b64}
+        # 1. On demande à Groq de traduire et d'améliorer le prompt en anglais
+        prompt_response = client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[
+                {"role": "system", "content": "Tu es un expert en prompt d'image. Traduis la demande de l'utilisateur en un prompt très détaillé en anglais pour une IA générative. Ne réponds QUE par le prompt en anglais, sans aucune autre phrase."},
+                {"role": "user", "content": req.prompt}
+            ]
+        )
+        prompt_en = prompt_response.choices[0].message.content.strip()
+
+        # 2. On génère l'image avec Pollinations en anglais
+        import urllib.parse
+        prompt_encode = urllib.parse.quote(prompt_en)
+        url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
+        
+        import requests
+        response = requests.get(url, timeout=60)
+        
+        if response.status_code == 200:
+            b64 = base64.b64encode(response.content).decode("utf-8")
+            return {"image": "data:image/jpeg;base64," + b64}
+        else:
+            return {"error": "Erreur de génération d'image."}
+            
     except Exception as e:
         return {"error": str(e)}
 
