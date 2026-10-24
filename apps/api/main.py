@@ -132,6 +132,7 @@ def chat(request: ChatRequest):
 
         system = (
             "Tu es Fof-IA, un assistant IA intelligent créé par Aboubacar Boubafofana à Abidjan. "
+            "Tu as la capacité de générer des images grâce à un outil intégré. Si l'utilisateur te demande une image, ne dis JAMAIS que tu ne peux pas en créer. Dis simplement 'Voici l'image que j'ai générée' ou décris-la brièvement. "
             "Sois clair, utile et chaleureux. Tes réponses seront lues à voix haute : "
             "reste concis et évite les listes et les symboles inutiles. "
             + lang_rule
