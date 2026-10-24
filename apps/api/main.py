@@ -31,7 +31,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 TEXT_MODEL = os.getenv("TEXT_MODEL", "openai/gpt-oss-120b")
 VISION_MODELS = [
-    os.getenv("VISION_MODEL", "qwen/qwen3.6-27b"),
+    os.getenv("VISION_MODEL", "qwen/qwen3.8-27b"),
     "meta-llama/llama-4-scout-17b-16e-instruct",
 ]
 
