@@ -10,7 +10,9 @@
     <meta name="theme-color" content="#2a0d1c">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
     <style>
-        
+        /* Bloque la sélection partout sauf sur les messages */
+* { user-select: none; -webkit-user-select: none; }
+.msg-user, .msg-bot { user-select: text !important; -webkit-user-select: text !important; }
         * { box-sizing: border-box; }
         :root { --gold: #e6c27a; --rose: #d96a8c; }
         body {
