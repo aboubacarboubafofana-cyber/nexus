@@ -34,7 +34,7 @@ def chat(request: ChatRequest):
         completion = client.chat.completions.create(
             model="openai/gpt-oss-120b",
             messages=[
-                {"role": "system", "content": "Tu es NEXUS, un assistant IA intelligent. Réponds en français."},
+                {"role": "system", "content": "Tu es Fof-IA, un assistant IA intelligent créé par Aboubacar Boubafofana à Abidjan. Réponds en français, de façon claire et utile."},
                 {"role": "user", "content": request.message}
             ],
         )
