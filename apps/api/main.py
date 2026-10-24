@@ -20,11 +20,18 @@ app.add_middleware(
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+TEXT_MODEL = os.getenv("TEXT_MODEL", "openai/gpt-oss-120b")
+VISION_MODELS = [
+    os.getenv("VISION_MODEL", "qwen/qwen3.6-27b"),
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+]
+
 
 class ChatRequest(BaseModel):
     message: str
     history: list = []
     lang: str = "auto"
+    image: str = ""
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -59,8 +66,26 @@ def chat(request: ChatRequest):
             if isinstance(m, dict) and m.get("role") in ("user", "assistant")
         ]
 
+        if request.image:
+            user_msg = {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": request.message},
+                    {"type": "image_url", "image_url": {"url": request.image}},
+                ],
+            }
+            messages = [{"role": "system", "content": system}, *past, user_msg]
+            last_error = None
+            for model in VISION_MODELS:
+                try:
+                    completion = client.chat.completions.create(model=model, messages=messages)
+                    return {"response": completion.choices[0].message.content}
+                except Exception as e:
+                    last_error = e
+            return {"response": f"Erreur de lecture d'image : {str(last_error)}"}
+
         completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model=TEXT_MODEL,
             messages=[{"role": "system", "content": system}, *past,
                       {"role": "user", "content": request.message}],
         )
