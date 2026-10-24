@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fof-IA</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
+    <link rel="apple-touch-icon" href="/logo.svg">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2a0d1c">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -188,9 +192,10 @@
             });
         }
         function shrink(img, max) {
-            const s = Math.min(1, max / Math.max(img.width, img.height));
+            const w = img.width, h = img.height;
+            const s = Math.min(1, max / Math.max(w, h));
             const c = document.createElement('canvas');
-            c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+            c.width = Math.round(w * s); c.height = Math.round(h * s);
             c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
             return c.toDataURL('image/jpeg', 0.85);
         }
@@ -301,13 +306,14 @@
             const img = pendingImage;
             if (pendingText) { toSend = message + "\n\n[Contenu du fichier " + pendingName + "]\n" + pendingText; shown += "<br>📄 " + escapeHtml(pendingName); }
             if (img) shown += `<img src="${img}">`;
+            const hadFile = !!(img || pendingText);
             clearPending();
 
             chat.innerHTML += `<div class="msg-user"><b>Toi:</b> ${shown}</div>`;
             input.value = '';
             chat.scrollTop = chat.scrollHeight;
 
-            const imgMatch = !img && toSend === message ? message.match(/^(\/image|image\s*:|dessine|affiche\s*:)\s*(.+)/i) : null;
+            const imgMatch = !hadFile ? message.match(/^(\/image|image\s*:|dessine|affiche\s*:)\s*(.+)/i) : null;
             if (imgMatch) {
                 let prompt = imgMatch[2];
                 if (/^affiche/i.test(imgMatch[1])) prompt += ", poster design, elegant typography, high quality";
@@ -324,7 +330,7 @@
                 });
                 const data = await res.json();
                 const answer = data.response || 'Pas de réponse.';
-                history.push({role: "user", content: message + (img ? " (image jointe)" : "") + (pendingName ? "" : "")});
+                history.push({role: "user", content: message + (hadFile ? " (fichier joint)" : "")});
                 history.push({role: "assistant", content: answer});
                 chat.innerHTML += `<div class="msg-bot"><b>Fof-IA:</b> ${format(answer)}</div>`;
                 chat.scrollTop = chat.scrollHeight;
