@@ -54,7 +54,18 @@ def root():
 @app.get("/logo.svg")
 def logo():
     return Response(content=LOGO_SVG, media_type="image/svg+xml")
-
+def generer_image_pollinations(prompt: str):
+    import urllib.parse
+    prompt_encode = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
+    try:
+        import requests
+        response = requests.get(url, timeout=60)
+        if response.status_code == 200:
+            return base64.b64encode(response.content).decode("utf-8")
+    except Exception:
+        pass
+    return None
 
 @app.get("/manifest.json")
 def manifest():
