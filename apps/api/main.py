@@ -88,9 +88,16 @@ class ImageRequest(BaseModel):
 
 @app.post("/api/image")
 def make_image(req: ImageRequest):
+    # 1. On essaie Pollinations d'abord (gratuit, sans clé)
+    img_b64 = generer_image_pollinations(req.prompt)
+    if img_b64:
+        return {"image": "data:image/jpeg;base64," + img_b64}
+
+    # 2. Si ça échoue, on tente Hugging Face
     token = os.getenv("HF_TOKEN")
     if not token:
-        return {"error": "La clé HF_TOKEN est absente dans Render (Environment)."}
+        return {"error": "La clé HF_TOKEN est absente."}
+    
     try:
         from huggingface_hub import InferenceClient
         hf = InferenceClient(api_key=token)
