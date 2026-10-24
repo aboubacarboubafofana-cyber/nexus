@@ -120,6 +120,34 @@ def make_image(req: ImageRequest):
 @app.post("/api/chat")
 def chat(request: ChatRequest):
     try:
+        # Détection de demande d'image dans le chat
+mots_cles_image = ["crée", "génère", "dessine", "affiche", "image", "photo", "pub"]
+if any(mot in request.message.lower() for mot in mots_cles_image) and not request.image:
+    try:
+        prompt_resp = client.chat.completions.create(
+            model=TEXT_MODEL,
+            messages=[
+                {"role": "system", "content": "Traduis cette demande en un prompt d'image détaillé en anglais. Réponds UNIQUEMENT par le prompt."},
+                {"role": "user", "content": request.message}
+            ]
+        )
+        prompt_en = prompt_resp.choices[0].message.content.strip()
+        
+        import urllib.parse
+        import requests
+        prompt_encode = urllib.parse.quote(prompt_en)
+        url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
+        img_resp = requests.get(url, timeout=60)
+        
+        if img_resp.status_code == 200:
+            b64 = base64.b64encode(img_resp.content).decode("utf-8")
+            return {
+                "response": "Voici l'affiche que j'ai générée pour toi :",
+                "image": "data:image/jpeg;base64," + b64
+            }
+    except Exception as e:
+        pass # Si ça échoue, on continue vers le texte normal
+        
         if request.lang == "auto":
             lang_rule = "Réponds dans la langue utilisée par l'utilisateur."
         elif request.lang == "Bambara":
