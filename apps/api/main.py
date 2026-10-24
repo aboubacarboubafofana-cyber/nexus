@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response, JSONResponse
 from pydantic import BaseModel
 from groq import Groq
-from dotenv import load_dotenv 
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -45,7 +45,6 @@ class ChatRequest(BaseModel):
     image: str = ""
 
 
-# --- FONCTION POUR GÉNÉRER UNE IMAGE AVEC HUGGING FACE ---
 def generer_image_hf(prompt: str):
     url = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
     headers = {
