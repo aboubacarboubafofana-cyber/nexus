@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+loguru
+pydantic
+groq
+python-dotenv
+huggingface_hub
+pillow
