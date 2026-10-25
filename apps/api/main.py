@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import os
 import io
 import base64
+import urllib.parse
+import requests
 
 load_dotenv()
 
@@ -37,35 +39,23 @@ VISION_MODELS = [
     "qwen/qwen3.8-27b",
 ]
 
-
 class ChatRequest(BaseModel):
     message: str
     history: list = []
     lang: str = "auto"
     image: str = ""
 
+class ImageRequest(BaseModel):
+    prompt: str
 
 @app.get("/", response_class=HTMLResponse)
 def root():
     with open("index.html", "r", encoding="utf-8") as f:
         return f.read()
 
-
 @app.get("/logo.svg")
 def logo():
     return Response(content=LOGO_SVG, media_type="image/svg+xml")
-def generer_image_pollinations(prompt: str):
-    import urllib.parse
-    prompt_encode = urllib.parse.quote(prompt)
-    url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
-    try:
-        import requests
-        response = requests.get(url, timeout=60)
-        if response.status_code == 200:
-            return base64.b64encode(response.content).decode("utf-8")
-    except Exception:
-        pass
-    return None
 
 @app.get("/manifest.json")
 def manifest():
@@ -81,88 +71,70 @@ def manifest():
         ],
     })
 
-
-class ImageRequest(BaseModel):
-    prompt: str
-
-
 @app.post("/api/image")
 def make_image(req: ImageRequest):
-    try:
-        # 1. On demande à Groq de traduire et d'améliorer le prompt en anglais
-        prompt_response = client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {"role": "system", "content": "Tu es un expert en prompt d'image. Traduis la demande de l'utilisateur en un prompt très détaillé en anglais pour une IA générative. Ne réponds QUE par le prompt en anglais, sans aucune autre phrase."},
-                {"role": "user", "content": req.prompt}
-            ]
-        )
-        prompt_en = prompt_response.choices[0].message.content.strip()
-
-        # 2. On génère l'image avec Pollinations en anglais
-        import urllib.parse
-        prompt_encode = urllib.parse.quote(prompt_en)
-        url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
-        
-        import requests
-        response = requests.get(url, timeout=60)
-        
-        if response.status_code == 200:
-            b64 = base64.b64encode(response.content).decode("utf-8")
-            return {"image": "data:image/jpeg;base64," + b64}
-        else:
-            return {"error": "Erreur de génération d'image."}
-            
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@app.post("/api/chat")
-def chat(request: ChatRequest):
-    try:
-        # Détection de demande d'image dans le chat
-mots_cles_image = ["crée", "génère", "dessine", "affiche", "image", "photo", "pub"]
-if any(mot in request.message.lower() for mot in mots_cles_image) and not request.image:
     try:
         prompt_resp = client.chat.completions.create(
             model=TEXT_MODEL,
             messages=[
                 {"role": "system", "content": "Traduis cette demande en un prompt d'image détaillé en anglais. Réponds UNIQUEMENT par le prompt."},
-                {"role": "user", "content": request.message}
+                {"role": "user", "content": req.prompt}
             ]
         )
         prompt_en = prompt_resp.choices[0].message.content.strip()
-        
-        import urllib.parse
-        import requests
         prompt_encode = urllib.parse.quote(prompt_en)
         url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
+        
         img_resp = requests.get(url, timeout=60)
         
         if img_resp.status_code == 200:
             b64 = base64.b64encode(img_resp.content).decode("utf-8")
-            return {
-                "response": "Voici l'affiche que j'ai générée pour toi :",
-                "image": "data:image/jpeg;base64," + b64
-            }
+            return {"image": "data:image/jpeg;base64," + b64}
+        else:
+            return {"error": "Erreur de génération d'image."}
     except Exception as e:
-        pass # Si ça échoue, on continue vers le texte normal
-        
+        return {"error": str(e)}
+
+@app.post("/api/chat")
+def chat(request: ChatRequest):
+    try:
+        # Détection de demande d'image dans le chat
+        mots_cles_image = ["crée", "génère", "dessine", "affiche", "image", "photo", "pub"]
+        if any(mot in request.message.lower() for mot in mots_cles_image) and not request.image:
+            try:
+                prompt_resp = client.chat.completions.create(
+                    model=TEXT_MODEL,
+                    messages=[
+                        {"role": "system", "content": "Traduis cette demande en un prompt d'image détaillé en anglais. Réponds UNIQUEMENT par le prompt."},
+                        {"role": "user", "content": request.message}
+                    ]
+                )
+                prompt_en = prompt_resp.choices[0].message.content.strip()
+                prompt_encode = urllib.parse.quote(prompt_en)
+                url = f"https://image.pollinations.ai/prompt/{prompt_encode}?width=1024&height=1024&nologo=true&model=flux"
+                img_resp = requests.get(url, timeout=60)
+                
+                if img_resp.status_code == 200:
+                    b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                    return {
+                        "response": "Voici l'affiche que j'ai générée pour toi :",
+                        "image": "data:image/jpeg;base64," + b64
+                    }
+            except Exception:
+                pass
+
+        # Gestion du texte et de la vision
         if request.lang == "auto":
             lang_rule = "Réponds dans la langue utilisée par l'utilisateur."
         elif request.lang == "Bambara":
-            lang_rule = (
-                "Réponds en bambara simple (alphabet latin). "
-                "Si tu n'es pas sûr d'un mot, ajoute une courte explication en français."
-            )
+            lang_rule = "Réponds en bambara simple (alphabet latin). Si tu n'es pas sûr d'un mot, ajoute une courte explication en français."
         else:
             lang_rule = f"Réponds en {request.lang}."
 
         system = (
             "Tu es Fof-IA, un assistant IA intelligent créé par Aboubacar Boubafofana à Abidjan. "
-            "Tu as la capacité de générer des images grâce à un outil intégré. Si l'utilisateur te demande une image, ne dis JAMAIS que tu ne peux pas en créer. Dis simplement 'Voici l'image que j'ai générée' ou décris-la brièvement. "
-            "Sois clair, utile et chaleureux. Tes réponses seront lues à voix haute : "
-            "reste concis et évite les listes et les symboles inutiles. "
+            "Tu as la capacité de générer des images grâce à un outil intégré. Si l'utilisateur te demande une image, ne dis JAMAIS que tu ne peux pas en créer. Dis simplement 'Voici l'image que j'ai générée'. "
+            "Sois clair, utile et chaleureux. Tes réponses seront lues à voix haute : reste concis et évite les listes et les symboles inutiles. "
             + lang_rule
         )
 
