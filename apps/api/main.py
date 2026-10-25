@@ -77,7 +77,7 @@ def make_image(req: ImageRequest):
         prompt_resp = client.chat.completions.create(
             model=TEXT_MODEL,
             messages=[
-                {"role": "system", "content": "Traduis cette demande en un prompt d'image détaillé en anglais. Réponds UNIQUEMENT par le prompt."},
+                {"role": "system", "content": "Tu es un expert en design graphique. Traduis la demande en un prompt d'image en anglais. Le prompt doit IMPÉRATIVEMENT commencer par 'A professional advertising poster, flat design, vibrant colors, graphic design, no frame, no mockup, full screen background'. Sois très précis sur les éléments à afficher. Ne réponds QUE par le prompt."}
                 {"role": "user", "content": req.prompt}
             ]
         )
@@ -105,7 +105,7 @@ def chat(request: ChatRequest):
                 prompt_resp = client.chat.completions.create(
                     model=TEXT_MODEL,
                     messages=[
-                        {"role": "system", "content": "Traduis cette demande en un prompt d'image détaillé en anglais. Réponds UNIQUEMENT par le prompt."},
+                        {"role": "system", "content": "Tu es un expert en design graphique. Traduis la demande en un prompt d'image en anglais. Le prompt doit IMPÉRATIVEMENT commencer par 'A professional advertising poster, flat design, vibrant colors, graphic design, no frame, no mockup, full screen background'. Sois très précis sur les éléments à afficher. Ne réponds QUE par le prompt."}
                         {"role": "user", "content": request.message}
                     ]
                 )
