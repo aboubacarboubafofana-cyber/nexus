@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fof-IA</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
+    <link rel="apple-touch-icon" href="/logo.svg">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2a0d1c">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, button, select, h1, #convTitle, #drawer, #menu, #chip, #editor label {
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+        }
+        .msg-user, .msg-bot, .msg-user *, .msg-bot *, input[type=text] {
+            -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+        }
+        :root { --gold: #e6c27a; --rose: #d96a8c; }
+        body {
+            margin: 0; padding: 14px 14px 10px; color: #f6e9ee; font-family: system-ui, sans-serif;
+            background: radial-gradient(circle at 20% 0%, #4a1230 0%, #1a0812 55%, #0d0408 100%) fixed;
+            height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .top, #convTitle, .opts, .bottom { flex-shrink: 0; }
+        .bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+        .top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .ic { padding: 8px 14px; font-size: 22px; background: rgba(255,255,255,.08); color: var(--gold); border: 1px solid rgba(230,194,122,.3); }
+        h1 {
+            flex: 1; text-align: center; margin: 0; font-family: 'Playfair Display', Georgia, serif;
+            font-style: italic; font-size: 36px;
+            background: linear-gradient(90deg, var(--gold), var(--rose)); -webkit-background-clip: text;
+            background-clip: text; color: transparent;
+        }
+        #convTitle { text-align: center; font-size: 13px; color: rgba(246,233,238,.6); margin: -4px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .opts { display: flex; gap: 8px; margin-bottom: 10px; }
+        select {
+            flex: 1; min-width: 0; padding: 11px; border-radius: 14px; border: 1px solid rgba(230,194,122,.35);
+            background: rgba(255,255,255,.07); color: #f6e9ee; font-size: 14px;
+        }
+        select option { color: #000; }
+        #chat {
+            flex: 1; min-height: 0; overflow-y: auto; padding: 14px; margin-bottom: 10px; border-radius: 22px;
+            background: rgba(255,255,255,.05); border: 1px solid rgba(230,194,122,.25);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 0 40px rgba(217,106,140,.15) inset;
+        }
+        .msg-user, .msg-bot { margin: 10px 0; padding: 10px 14px; border-radius: 18px; max-width: 88%; white-space: pre-wrap; word-wrap: break-word; }
+        .msg-user { margin-left: auto; background: linear-gradient(135deg, rgba(217,106,140,.55), rgba(120,30,70,.6)); }
+        .msg-bot { margin-right: auto; background: rgba(230,194,122,.12); border: 1px solid rgba(230,194,122,.25); }
+        .msg-bot b, .msg-user b { color: var(--gold); }
+        .msg-user img, .msg-bot img { max-width: 100%; border-radius: 14px; margin-top: 8px; display: block; }
+        .input-box { display: flex; gap: 8px; }
+        input[type=text] {
+            flex: 1; min-width: 0; padding: 14px; border-radius: 16px; font-size: 16px; color: #fff;
+            border: 1px solid rgba(230,194,122,.35); background: rgba(255,255,255,.08);
+        }
+        input[type=text]::placeholder { color: rgba(246,233,238,.5); }
+        button {
+            padding: 12px 14px; border: none; border-radius: 16px; font-weight: bold; font-size: 16px; cursor: pointer;
+            background: linear-gradient(135deg, var(--gold), #c98a4b); color: #2a0d1c;
+        }
+        #mic.on { background: linear-gradient(135deg, #ff6b8a, #c4204f); color: #fff; animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,107,138,.6)} 100%{box-shadow:0 0 0 16px rgba(255,107,138,0)} }
+        #free { width: 100%; margin-top: 8px; background: rgba(255,255,255,.1); color: #f6e9ee; border: 1px solid rgba(230,194,122,.35); }
+        #free.on { background: linear-gradient(135deg, var(--rose), #8d1f4d); color: #fff; }
+        #chip { display: none; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px 12px; border-radius: 14px;
+                background: rgba(230,194,122,.14); border: 1px solid rgba(230,194,122,.3); font-size: 14px; }
+        #chip span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #chip button { padding: 6px 10px; font-size: 13px; }
+
+        #overlay { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.6); }
+        #drawer {
+            position: fixed; top: 0; bottom: 0; left: 0; width: 82%; max-width: 340px; z-index: 30; padding: 16px;
+            overflow-y: auto; transform: translateX(-105%); transition: transform .25s;
+            background: linear-gradient(180deg, #2a0d1c, #120509); border-right: 1px solid rgba(230,194,122,.3);
+        }
+        #drawer.open { transform: translateX(0); }
+        #drawer h2 { margin: 0 0 12px; font-family: 'Playfair Display', Georgia, serif; font-style: italic; color: var(--gold); }
+        #newBtn { width: 100%; margin-bottom: 12px; }
+        .conv { padding: 12px; margin-bottom: 6px; border-radius: 14px; background: rgba(255,255,255,.06); cursor: pointer;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid transparent; }
+        .conv.active { border-color: var(--gold); background: rgba(230,194,122,.12); }
+        #menu {
+            display: none; position: fixed; top: 64px; right: 14px; z-index: 40; min-width: 230px; padding: 6px; border-radius: 16px;
+            background: rgba(30,10,20,.97); border: 1px solid rgba(230,194,122,.35); box-shadow: 0 10px 30px rgba(0,0,0,.6);
+        }
+        #menu div { padding: 13px 14px; border-radius: 10px; cursor: pointer; }
+        #menu div:active { background: rgba(230,194,122,.15); }
+        #menu .danger { color: #ff7a8a; }
+
+        #editor { display: none; position: fixed; inset: 0; z-index: 50; overflow-y: auto; padding: 14px; background: rgba(13,4,8,.96); }
+        #editor canvas { width: 100%; border-radius: 14px; }
+        #editor label { display: block; margin: 10px 0 2px; font-size: 14px; color: var(--gold); }
+        #editor input[type=range] { width: 100%; }
+        #editor input[type=text] { width: 100%; }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .row button { flex: 1; }
+        #chat img { cursor: pointer; }
+        #msgBar { display: none; align-items: center; gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
+        #msgBar span { flex: 1; font-size: 14px; color: var(--gold); }
+        #msgBar button { padding: 8px 12px; font-size: 14px; }
+        #msgDel { background: linear-gradient(135deg, #ff6b8a, #c4204f); color: #fff; }
+        .picked { outline: 2px solid var(--rose); background: rgba(217,106,140,.35) !important; }
+        #viewer { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.95);
+                  flex-direction: column; align-items: center; justify-content: center; padding: 12px; }
+        #viewer img { max-width: 100%; max-height: 80%; object-fit: contain; border-radius: 12px; }
+        .vbar { display: flex; gap: 10px; margin-top: 14px; }
+        #selBar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        #selBar button { flex: 1; padding: 10px; font-size: 14px; }
+        #delBtn { background: linear-gradient(135deg, #ff6b8a, #c4204f); color: #fff; }
+        .conv.sel { border-color: var(--rose); background: rgba(217,106,140,.2); }
+    </style>
+</head>
+<body>
+    <div class="top">
+        <button class="ic" onclick="openDrawer()">☰</button>
+        <h1>Fof-IA</h1>
+        <button class="ic" onclick="toggleMenu()">⋮</button>
+    </div>
+    <div id="convTitle"></div>
+
+    <div id="overlay" onclick="closeAll()"></div>
+
+    <div id="drawer">
+        <h2>Conversations</h2>
+        <button id="newBtn" onclick="newConv()">＋ Nouvelle conversation</button>
+        <div id="selBar">
+            <button id="selBtn" onclick="toggleSel()">☑ Sélectionner</button>
+            <button id="allBtn" style="display:none" onclick="selAll()">Tout</button>
+            <button id="delBtn" style="display:none" onclick="deleteSel()">🗑️ Supprimer (0)</button>
+        </div>
+        <div id="convList"></div>
+    </div>
+
+    <div id="menu">
+        <div onclick="shareConv()">📤 Partager</div>
+        <div onclick="renameConv()">✏️ Renommer</div>
+        <div id="pinItem" onclick="pinConv()">📌 Épingler</div>
+        <div onclick="location.href='/affiche'">🖼️ Atelier d'affiches</div>
+        <div onclick="installApp()">🏠 Installer l'application</div>
+        <div class="danger" onclick="deleteConv()">🗑️ Supprimer</div>
+    </div>
+
+    <div class="opts">
+        <select id="lang"></select>
+        <select id="gender">
+            <option value="f">Voix de femme</option>
+            <option value="m">Voix d'homme</option>
+        </select>
+    </div>
+
+    <div id="msgBar">
+        <span id="msgCount"></span>
+        <button onclick="selAllMsgs()">Tout</button>
+        <button id="msgDel" onclick="deleteMsgs()">🗑️ Supprimer</button>
+        <button onclick="clearMsgSel()">✕</button>
+    </div>
+    <div id="chat"></div>
+
+    <div class="bottom">
+    <div id="chip"><span id="chipName"></span><button id="chipEdit" onclick="openEditor()">✏️ Éditer</button><button onclick="clearPending()">✕</button></div>
+
+    <div class="input-box">
+        <button onclick="document.getElementById('file').click()">📎</button>
+        <button id="mic" onclick="toggleMic()">🎙️</button>
+        <input type="text" id="msg" placeholder="Écris ou parle..." onkeypress="if(event.key==='Enter') send()">
+        <button onclick="send()">➤</button>
+    </div>
+    <input type="file" id="file" style="display:none" accept="image/*,.txt,.md,.csv,.json,.py,.js,.html,.css,.xml,.log" onchange="onFile(this)">
+    <button id="free" onclick="toggleFree()">🔁 Conversation mains libres : désactivée</button>
+    </div>
+
+    <div id="viewer" onclick="closeViewer()">
+        <img id="viewerImg" alt="image">
+        <div class="vbar">
+            <button onclick="event.stopPropagation(); saveViewer()">⬇️ Enregistrer</button>
+            <button onclick="event.stopPropagation(); closeViewer()">✕ Fermer</button>
+        </div>
+    </div>
+
+    <div id="editor">
+        <canvas id="cv"></canvas>
+        <label>Luminosité</label><input type="range" id="fBright" min="50" max="160" value="100" oninput="draw()">
+        <label>Contraste</label><input type="range" id="fContrast" min="50" max="160" value="100" oninput="draw()">
+        <label>Saturation</label><input type="range" id="fSat" min="0" max="200" value="100" oninput="draw()">
+        <label>Flou</label><input type="range" id="fBlur" min="0" max="10" value="0" oninput="draw()">
+        <div class="row">
+            <button onclick="toggleF('gray')">Noir et blanc</button>
+            <button onclick="toggleF('sepia')">Sépia</button>
+            <button onclick="rotate()">⟳ Pivoter</button>
+        </div>
+        <label>Texte sur l'image</label>
+        <input type="text" id="fText" placeholder="Ton texte..." oninput="draw()">
+        <select id="fPos" onchange="draw()" style="width:100%;margin-top:8px"><option value="bottom">Texte en bas</option><option value="top">Texte en haut</option><option value="middle">Texte au centre</option></select>
+        <div class="row">
+            <button onclick="useEdited()">✅ Utiliser</button>
+            <button onclick="downloadEdited()">⬇️ Télécharger</button>
+            <button onclick="closeEditor()">Fermer</button>
+        </div>
+    </div>
+
+    <script>
+        let handsFree = false, recog = null, listening = false;
+        let pendingImage = "", pendingText = "", pendingName = "";
+        let baseImg = null, gray = false, sepia = false;
+        let convs = [], cur = null, deferredPrompt = null;
+
+        const LANGS = [
+            ["auto", "🌍 Langue : automatique", "fr-FR"],
+            ["Français", "Français", "fr-FR"],
+            ["English", "English", "en-US"],
+            ["Bambara", "Bambara (bamanankan)", "fr-FR"],
+            ["العربية", "العربية", "ar-SA"],
+            ["Español", "Español", "es-ES"],
+            ["Português", "Português", "pt-BR"],
+            ["Deutsch", "Deutsch", "de-DE"],
+            ["中文", "中文", "zh-CN"],
+            ["Kiswahili", "Kiswahili", "sw-KE"]
+        ];
+        const langSel = document.getElementById('lang');
+        LANGS.forEach(l => { const o = document.createElement('option'); o.value = l[0]; o.textContent = l[1]; langSel.appendChild(o); });
+
+        function voiceLang() { const f = LANGS.find(l => l[0] === langSel.value); return f ? f[2] : "fr-FR"; }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function format(t) { return escapeHtml(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+        function cleanForSpeech(t) { return t.replace(/\*\*/g, '').replace(/[#*_`>]/g, ''); }
+
+        /* ---------- Conversations ---------- */
+        function loadConvs() {
+            try { convs = JSON.parse(localStorage.getItem('fofia_convs') || '[]'); } catch (e) { convs = []; }
+            if (!Array.isArray(convs)) convs = [];
+        }
+        function saveConvs() {
+            try { localStorage.setItem('fofia_convs', JSON.stringify(convs)); } catch (e) {}
+        }
+        function sortedConvs() {
+            return convs.slice().sort((a, b) => (b.pinned - a.pinned) || (b.updated - a.updated));
+        }
+        function newConv() {
+            if (cur && cur.items.length === 0) { closeAll(); return; }
+            cur = {id: Date.now(), title: "Nouvelle conversation", pinned: false, updated: Date.now(), items: []};
+            convs.push(cur);
+            saveConvs(); renderAll(); closeAll();
+        }
+        function openConv(id) {
+            const c = convs.find(x => x.id === id);
+            if (c) { cur = c; renderAll(); }
+            closeAll();
+        }
+        function renderAll() { renderChat(); renderList(); document.getElementById('convTitle').textContent = cur ? cur.title : ""; }
+        let selMode = false;
+        const selected = new Set();
+        function renderList() {
+            const box = document.getElementById('convList');
+            box.innerHTML = "";
+            sortedConvs().forEach(c => {
+                const d = document.createElement('div');
+                const isSel = selected.has(c.id);
+                d.className = 'conv' + (!selMode && cur && c.id === cur.id ? ' active' : '') + (isSel ? ' sel' : '');
+                d.textContent = (selMode ? (isSel ? "☑ " : "☐ ") : "") + (c.pinned ? "📌 " : "") + c.title;
+                d.onclick = () => {
+                    if (selMode) { isSel ? selected.delete(c.id) : selected.add(c.id); updateSelUI(); renderList(); }
+                    else openConv(c.id);
+                };
+                box.appendChild(d);
+            });
+        }
+        function updateSelUI() {
+            document.getElementById('selBtn').textContent = selMode ? "✕ Annuler" : "☑ Sélectionner";
+            document.getElementById('allBtn').style.display = selMode ? 'inline-block' : 'none';
+            const del = document.getElementById('delBtn');
+            del.style.display = selMode ? 'inline-block' : 'none';
+            del.textContent = "🗑️ Supprimer (" + selected.size + ")";
+        }
+        function toggleSel() { selMode = !selMode; selected.clear(); updateSelUI(); renderList(); }
+        function selAll() {
+            if (selected.size === convs.length) selected.clear();
+            else convs.forEach(c => selected.add(c.id));
+            updateSelUI(); renderList();
+        }
+        function deleteSel() {
+            if (selected.size === 0) { alert("Touche d'abord les conversations à supprimer."); return; }
+            if (!confirm("Supprimer " + selected.size + " conversation(s) ? Cette action est définitive.")) return;
+            convs = convs.filter(c => !selected.has(c.id));
+            selected.clear(); selMode = false; updateSelUI();
+            if (convs.length === 0) {
+                cur = null; newConv();
+            } else {
+                if (!cur || !convs.some(c => c.id === cur.id)) cur = sortedConvs()[0];
+                saveConvs(); renderAll();
+            }
+        }
+
+        /* ---------- Visionneuse d'image ---------- */
+        const msgSel = new Set();
+        function updateMsgBar() {
+            document.getElementById('msgBar').style.display = msgSel.size ? 'flex' : 'none';
+            document.getElementById('msgCount').textContent = msgSel.size + " sélectionné(s)";
+        }
+        function clearMsgSel() {
+            msgSel.clear();
+            document.querySelectorAll('#chat .picked').forEach(el => el.classList.remove('picked'));
+            updateMsgBar();
+        }
+        function selAllMsgs() {
+            document.querySelectorAll('#chat [data-id]').forEach(el => { msgSel.add(el.dataset.id); el.classList.add('picked'); });
+            updateMsgBar();
+        }
+        function deleteMsgs() {
+            if (!msgSel.size) return;
+            if (!confirm("Supprimer " + msgSel.size + " message(s) ? Cette action est définitive.")) return;
+            cur.items = cur.items.filter(i => !msgSel.has(String(i.id)));
+            document.querySelectorAll('#chat [data-id]').forEach(el => { if (msgSel.has(el.dataset.id)) el.remove(); });
+            msgSel.clear(); updateMsgBar(); touch();
+        }
+        document.getElementById('chat').addEventListener('click', e => {
+            if (window.getSelection && String(window.getSelection()).length > 0) return;
+            if (e.target.tagName === 'IMG' && msgSel.size === 0) {
+                document.getElementById('viewerImg').src = e.target.src;
+                document.getElementById('viewer').style.display = 'flex';
+                return;
+            }
+            const holder = e.target.closest('[data-id]');
+            if (!holder) return;
+            const id = holder.dataset.id;
+            if (msgSel.has(id)) { msgSel.delete(id); holder.classList.remove('picked'); }
+            else { msgSel.add(id); holder.classList.add('picked'); }
+            updateMsgBar();
+        });
+        function closeViewer() { document.getElementById('viewer').style.display = 'none'; }
+        async function saveViewer() {
+            const src = document.getElementById('viewerImg').src;
+            try {
+                const b = await (await fetch(src)).blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(b);
+                a.download = 'fof-ia-image.jpg';
+                a.click();
+            } catch (e) { window.open(src, '_blank'); }
+        }
+        function tagItem(el, item) {
+            if (!item) return;
+            if (!item.id) item.id = Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+            el.dataset.id = String(item.id);
+            if (msgSel.has(String(item.id))) el.classList.add('picked');
+        }
+        function bubble(cls, html, item) {
+            const d = document.createElement('div');
+            d.className = cls;
+            d.innerHTML = html;
+            tagItem(d, item);
+            document.getElementById('chat').appendChild(d);
+            return d;
+        }
+        function renderChat() {
+            const chat = document.getElementById('chat');
+            chat.innerHTML = "";
+            msgSel.clear(); updateMsgBar();
+            cur.items.forEach(it => {
+                if (it.who === 'user') {
+                    bubble('msg-user', `<b>Toi:</b> ${escapeHtml(it.text)}${it.note ? "<br>" + escapeHtml(it.note) : ""}`, it);
+                } else if (it.gen) {
+                    addBotImage(it.gen, false, it);
+                } else {
+                    bubble('msg-bot', `<b>Fof-IA:</b> ${format(it.text)}`, it);
+                }
+            });
+            chat.scrollTop = chat.scrollHeight;
+        }
+        function touch() { cur.updated = Date.now(); saveConvs(); renderList(); }
+
+        function openDrawer() { closeAll(); renderList(); document.getElementById('drawer').classList.add('open'); document.getElementById('overlay').style.display = 'block'; }
+        function toggleMenu() {
+            const m = document.getElementById('menu');
+            if (m.style.display === 'block') { closeAll(); return; }
+            document.getElementById('pinItem').textContent = cur.pinned ? "📌 Désépingler" : "📌 Épingler";
+            m.style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+        function closeAll() {
+            document.getElementById('drawer').classList.remove('open');
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+        function renameConv() {
+            closeAll();
+            const t = prompt("Nouveau nom de la conversation :", cur.title);
+            if (t && t.trim()) { cur.title = t.trim().slice(0, 60); touch(); document.getElementById('convTitle').textContent = cur.title; }
+        }
+        function pinConv() { cur.pinned = !cur.pinned; touch(); closeAll(); }
+        function deleteConv() {
+            closeAll();
+            if (!confirm("Supprimer cette conversation ?")) return;
+            convs = convs.filter(c => c.id !== cur.id);
+            cur = null;
+            if (convs.length === 0) { newConv(); }
+            else { cur = sortedConvs()[0]; saveConvs(); renderAll(); }
+        }
+        async function shareConv() {
+            closeAll();
+            const text = cur.items.map(i => (i.who === 'user' ? "Toi" : "Fof-IA") + " : " + i.text).join("\n\n");
+            if (!text) { alert("Cette conversation est vide."); return; }
+            try {
+                if (navigator.share) { await navigator.share({title: cur.title, text: text}); }
+                else { await navigator.clipboard.writeText(text); alert("Conversation copiée. Tu peux la coller où tu veux."); }
+            } catch (e) {}
+        }
+        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
+        function installApp() {
+            closeAll();
+            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+            else alert("Dans Chrome : touche ⋮ puis « Installer l'application » ou « Ajouter à l'écran d'accueil ».");
+        }
+
+        /* ---------- Voix ---------- */
+        function speak(text) {
+            if (!window.speechSynthesis) { afterSpeech(); return; }
+            speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(cleanForSpeech(text));
+            u.lang = voiceLang();
+            const female = document.getElementById('gender').value === 'f';
+            const voices = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith(u.lang.slice(0, 2).toLowerCase()));
+            const want = female ? /female|femme|woman|amelie|marie|julie|audrey|google/i : /male|homme|man|thomas|paul|daniel|henri/i;
+            const pick = voices.find(v => want.test(v.name)) || voices[0];
+            if (pick) u.voice = pick;
+            u.pitch = female ? 1.25 : 0.75;
+            u.onend = afterSpeech; u.onerror = afterSpeech;
+            speechSynthesis.speak(u);
+        }
+        function afterSpeech() { if (handsFree && !listening) startListening(); }
+        function setMic(on) { listening = on; document.getElementById('mic').classList.toggle('on', on); }
+        function startListening() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { alert("Ton navigateur ne supporte pas la reconnaissance vocale. Utilise Chrome."); return; }
+            if (window.speechSynthesis) speechSynthesis.cancel();
+            recog = new SR();
+            recog.lang = voiceLang();
+            recog.interimResults = false;
+            recog.onresult = e => send(e.results[0][0].transcript);
+            recog.onerror = () => { setMic(false); handsFree = false; updateFree(); };
+            recog.onend = () => setMic(false);
+            try { recog.start(); setMic(true); } catch (e) { setMic(false); }
+        }
+        function toggleMic() { if (listening) { recog.stop(); setMic(false); } else startListening(); }
+        function updateFree() {
+            const b = document.getElementById('free');
+            b.classList.toggle('on', handsFree);
+            b.textContent = handsFree ? "🔁 Conversation mains libres : activée" : "🔁 Conversation mains libres : désactivée";
+        }
+        function toggleFree() {
+            handsFree = !handsFree; updateFree();
+            if (handsFree) startListening();
+            else { if (recog) recog.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); }
+        }
+
+        /* ---------- Fichiers ---------- */
+        function loadImg(src) {
+            return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+        }
+        function readFile(file, asText) {
+            return new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onload = () => res(r.result); r.onerror = rej;
+                asText ? r.readAsText(file) : r.readAsDataURL(file);
+            });
+        }
+        function shrink(img, max) {
+            const w = img.width, h = img.height;
+            const s = Math.min(1, max / Math.max(w, h));
+            const c = document.createElement('canvas');
+            c.width = Math.round(w * s); c.height = Math.round(h * s);
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            return c.toDataURL('image/jpeg', 0.85);
+        }
+        async function onFile(inp) {
+            const file = inp.files[0]; inp.value = "";
+            if (!file) return;
+            clearPending();
+            try {
+                if (file.type.startsWith("image/")) {
+                    const img = await loadImg(await readFile(file, false));
+                    pendingImage = shrink(img, 1024);
+                    pendingName = file.name;
+                    showChip("🖼️ " + file.name, true);
+                } else if (/\.pdf$/i.test(file.name)) {
+                    alert("Les PDF ne sont pas encore pris en charge. Envoie une capture d'écran ou un fichier texte.");
+                } else {
+                    let t = await readFile(file, true);
+                    if (t.length > 12000) t = t.slice(0, 12000) + "\n[...fichier coupé...]";
+                    pendingText = t; pendingName = file.name;
+                    showChip("📄 " + file.name, false);
+                }
+            } catch (e) { alert("Impossible de lire ce fichier."); }
+        }
+        function showChip(name, canEdit) {
+            document.getElementById('chip').style.display = 'flex';
+            document.getElementById('chipName').textContent = name;
+            document.getElementById('chipEdit').style.display = canEdit ? 'inline-block' : 'none';
+        }
+        function clearPending() {
+            pendingImage = ""; pendingText = ""; pendingName = "";
+            document.getElementById('chip').style.display = 'none';
+        }
+
+        /* ---------- Éditeur de photo ---------- */
+        async function openEditor() {
+            if (!pendingImage) return;
+            baseImg = await loadImg(pendingImage);
+            gray = false; sepia = false;
+            ['fBright','fContrast','fSat'].forEach(id => document.getElementById(id).value = 100);
+            document.getElementById('fBlur').value = 0;
+            document.getElementById('fText').value = "";
+            document.getElementById('editor').style.display = 'block';
+            draw();
+        }
+        function closeEditor() { document.getElementById('editor').style.display = 'none'; }
+        function toggleF(w) { if (w === 'gray') gray = !gray; else sepia = !sepia; draw(); }
+        function rotate() {
+            const c = document.createElement('canvas');
+            c.width = baseImg.height; c.height = baseImg.width;
+            const x = c.getContext('2d');
+            x.translate(c.width / 2, c.height / 2); x.rotate(Math.PI / 2);
+            x.drawImage(baseImg, -baseImg.width / 2, -baseImg.height / 2);
+            loadImg(c.toDataURL('image/jpeg', 0.9)).then(i => { baseImg = i; draw(); });
+        }
+        function draw() {
+            if (!baseImg) return;
+            const cv = document.getElementById('cv'), x = cv.getContext('2d');
+            cv.width = baseImg.width; cv.height = baseImg.height;
+            const b = document.getElementById('fBright').value, c = document.getElementById('fContrast').value,
+                  s = document.getElementById('fSat').value, bl = document.getElementById('fBlur').value;
+            x.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%) blur(${bl}px)` + (gray ? " grayscale(1)" : "") + (sepia ? " sepia(1)" : "");
+            x.drawImage(baseImg, 0, 0);
+            x.filter = "none";
+            const t = document.getElementById('fText').value;
+            if (t) {
+                const size = Math.max(20, Math.round(cv.width / 12));
+                x.font = `bold ${size}px Georgia, serif`;
+                x.textAlign = "center"; x.fillStyle = "#fff"; x.strokeStyle = "rgba(0,0,0,.75)"; x.lineWidth = size / 8;
+                const pos = document.getElementById('fPos').value;
+                const y = pos === 'top' ? size * 1.3 : pos === 'middle' ? cv.height / 2 : cv.height - size * 0.6;
+                x.strokeText(t, cv.width / 2, y, cv.width * 0.95);
+                x.fillText(t, cv.width / 2, y, cv.width * 0.95);
+            }
+        }
+        function useEdited() { pendingImage = shrink(document.getElementById('cv'), 1024); closeEditor(); }
+        function downloadEdited() {
+            const a = document.createElement('a');
+            a.href = document.getElementById('cv').toDataURL('image/jpeg', 0.92);
+            a.download = "fof-ia-photo.jpg";
+            a.click();
+        }
+
+        /* ---------- Chat ---------- */
+        function addBotImage(url, scroll, item) {
+            const chat = document.getElementById('chat');
+            const wrap = document.createElement('div');
+            wrap.className = 'msg-bot';
+            tagItem(wrap, item);
+            wrap.innerHTML = '<b>Fof-IA:</b> Voici ton image 🎨';
+            const img = document.createElement('img');
+            img.src = url;
+            img.onerror = () => { img.remove(); wrap.innerHTML += '<br>(Le service d\'images ne répond pas, réessaie plus tard.)'; };
+            wrap.appendChild(img);
+            chat.appendChild(wrap);
+            if (scroll !== false) chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function send(textOverride) {
+            const input = document.getElementById('msg');
+            const chat = document.getElementById('chat');
+            let message = (typeof textOverride === 'string' ? textOverride : input.value).trim();
+            if (!message && !pendingImage && !pendingText) return;
+            if (!message) message = pendingImage ? "Décris et analyse cette image." : "Analyse ce fichier.";
+
+            let toSend = message, shown = escapeHtml(message);
+            const img = pendingImage, fname = pendingName;
+            if (pendingText) { toSend = message + "\n\n[Contenu du fichier " + pendingName + "]\n" + pendingText; shown += "<br>📄 " + escapeHtml(pendingName); }
+            if (img) shown += `<img src="${img}">`;
+            const hadFile = !!(img || pendingText);
+            clearPending();
+
+            const hist = cur.items.filter(i => i.text && !i.gen)
+                .map(i => ({role: i.who === 'user' ? 'user' : 'assistant', content: i.text})).slice(-10);
+
+            const userItem = {who: 'user', text: message, note: hadFile ? "📎 " + fname : ""};
+            cur.items.push(userItem);
+            bubble('msg-user', `<b>Toi:</b> ${shown}`, userItem);
+            input.value = '';
+            chat.scrollTop = chat.scrollHeight;
+            if (cur.title === "Nouvelle conversation") {
+                cur.title = message.slice(0, 30);
+                document.getElementById('convTitle').textContent = cur.title;
+            }
+            touch();
+
+            const imgRe = /^(?:\/image|image\s*:|affiche\s*:|dessine(?:-moi)?|(?:crée|cree|créer|génère|genere|générer|fais|fabrique)(?:[- ]moi)?\s+(?:une?\s+)?(?:image|affiche|photo|logo|illustration|dessin))\s*(?:de |d'|du |des |:)?\s*(.+)/i;
+            const imgMatch = !hadFile ? message.match(imgRe) : null;
+            if (imgMatch) {
+                let prompt = imgMatch[1];
+                if (/affiche/i.test(message)) prompt += ", poster design, elegant typography, high quality";
+                const wait = document.createElement('div');
+                wait.className = 'msg-bot';
+                wait.innerHTML = '<b>Fof-IA:</b> Je crée ton image, patiente quelques secondes... 🎨';
+                chat.appendChild(wait);
+                chat.scrollTop = chat.scrollHeight;
+                let made = "", errMsg = "";
+                try {
+                    const r = await fetch('/api/image', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt: prompt})
+                    });
+                    const d = await r.json();
+                    if (d.image) made = d.image;
+                    else errMsg = d.error || d.detail || "Réponse vide.";
+                } catch (e) { errMsg = "Le serveur ne répond pas (mise à jour en cours ?)."; }
+                wait.remove();
+                if (!made && errMsg) {
+                    const w = document.createElement('div');
+                    w.className = 'msg-bot';
+                    w.textContent = "⚠️ Hugging Face n'a pas répondu : " + String(errMsg).slice(0, 300) + " — j'utilise le service de secours (qualité moindre).";
+                    chat.appendChild(w);
+                }
+                if (made) {
+                    const hfItem = {who: 'bot', text: "Image créée 🎨 (non conservée dans l'historique)"};
+                    cur.items.push(hfItem);
+                    addBotImage(made, true, hfItem);
+                } else {
+                    const url = "https://image.pollinations.ai/prompt/" + encodeURIComponent(prompt) + "?width=768&height=1024&nologo=true&seed=" + (Date.now() % 100000);
+                    const pgItem = {who: 'bot', text: "Voici ton image 🎨", gen: url};
+                    cur.items.push(pgItem);
+                    addBotImage(url, true, pgItem);
+                }
+                touch();
+                afterSpeech();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: toSend, history: hist, lang: langSel.value, image: img})
+                });
+                const data = await res.json();
+                const answer = data.response || 'Pas de réponse.';
+                const botItem = {who: 'bot', text: answer};
+                cur.items.push(botItem);
+                bubble('msg-bot', `<b>Fof-IA:</b> ${format(answer)}`, botItem);
+                touch();
+                chat.scrollTop = chat.scrollHeight;
+                speak(answer);
+            } catch (e) {
+                chat.innerHTML += `<div class="msg-bot"><b>Fof-IA:</b> Erreur de connexion.</div>`;
+                chat.scrollTop = chat.scrollHeight;
+            }
+        }
+
+        /* ---------- Démarrage ---------- */
+        loadConvs();
+        if (convs.length === 0) {
+            cur = {id: Date.now(), title: "Nouvelle conversation", pinned: false, updated: Date.now(), items: []};
+            convs.push(cur);
+            saveConvs();
+        } else {
+            cur = convs.slice().sort((a, b) => b.updated - a.updated)[0];
+        }
+        renderAll();
+        if (window.speechSynthesis) speechSynthesis.getVoices();
+    </script>
+</body>
+</html>
