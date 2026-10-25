@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Promotion BOUBA STORE - Fof-IA</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
+    <meta name="theme-color" content="#2a0d1c">
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --gold: #e6c27a; --rose: #d96a8c; }
+        body {
+            margin: 0; padding: 14px; color: #f6e9ee; font-family: system-ui, sans-serif;
+            background: radial-gradient(circle at 20% 0%, #4a1230 0%, #1a0812 55%, #0d0408 100%) fixed;
+            min-height: 100vh;
+        }
+        .top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .top a { padding: 10px 14px; border-radius: 14px; text-decoration: none; color: var(--gold);
+                 background: rgba(255,255,255,.08); border: 1px solid rgba(230,194,122,.3); font-weight: bold; }
+        h1 { margin: 0; font-size: 22px; background: linear-gradient(90deg, var(--gold), var(--rose));
+             -webkit-background-clip: text; background-clip: text; color: transparent; }
+        p.hint { font-size: 14px; color: rgba(246,233,238,.7); margin: 4px 0 12px; }
+        #grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { padding: 8px; border-radius: 16px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; overflow: hidden; }
+        .card.sel { border-color: var(--rose); background: rgba(217,106,140,.2); }
+        .card img { width: 100%; height: 120px; object-fit: cover; border-radius: 10px; display: block; background: rgba(0,0,0,.3); }
+        .card .noimg { height: 120px; border-radius: 10px; background: rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; font-size: 34px; }
+        .card .nm { margin-top: 6px; font-weight: bold; font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .card .pr { color: var(--gold); font-size: 14px; margin-top: 2px; }
+        .panel { margin-top: 14px; padding: 14px; border-radius: 20px; background: rgba(255,255,255,.05); border: 1px solid rgba(230,194,122,.25); }
+        label { display: block; margin: 10px 0 4px; font-size: 14px; color: var(--gold); }
+        input[type=text], textarea {
+            width: 100%; padding: 12px; border-radius: 12px; font-size: 16px; color: #fff; font-family: inherit;
+            border: 1px solid rgba(230,194,122,.35); background: rgba(255,255,255,.08);
+        }
+        textarea { min-height: 170px; resize: vertical; }
+        button { padding: 14px; border: none; border-radius: 14px; font-weight: bold; font-size: 16px; cursor: pointer;
+                 background: linear-gradient(135deg, var(--gold), #c98a4b); color: #2a0d1c; }
+        .row { display: flex; gap: 8px; margin-top: 12px; }
+        .row button { flex: 1; }
+        #msg { margin: 10px 0; font-size: 14px; color: var(--gold); }
+        #raw { display: none; margin-top: 10px; padding: 10px; border-radius: 12px; background: rgba(0,0,0,.45);
+               font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; }
+        .link { background: none; color: var(--gold); text-decoration: underline; padding: 8px 0; font-size: 14px; font-weight: normal; }
+    </style>
+</head>
+<body>
+    <div class="top">
+        <a href="/">← Fof-IA</a>
+        <h1>Promotion boutique</h1>
+    </div>
+    <p class="hint">1. Touche un article. 2. Fof-IA écrit la promotion. 3. Tu la partages toi-même (WhatsApp, Facebook, TikTok…).</p>
+
+    <div id="msg">Chargement des articles…</div>
+    <div id="grid"></div>
+
+    <div class="panel" id="panel" style="display:none">
+        <div id="chosen" style="font-weight:bold"></div>
+        <label>Ton numéro (ajouté à la fin)</label>
+        <input type="text" id="tel" value="07 87 61 97 17">
+        <label>Lien de ta boutique (optionnel)</label>
+        <input type="text" id="lien" placeholder="https://...">
+        <div class="row"><button onclick="gen()">✍️ Écrire la promotion</button></div>
+        <label>Promotion (tu peux la modifier)</label>
+        <textarea id="promo" placeholder="Le texte apparaîtra ici…"></textarea>
+        <div class="row">
+            <button onclick="copyIt()">📋 Copier</button>
+            <button onclick="shareIt()">📤 Partager</button>
+        </div>
+        <button class="link" onclick="toggleRaw()">🔍 Voir les données de l'article</button>
+        <div id="raw"></div>
+    </div>
+
+    <script>
+        const DB = "https://project-f4477c80-7c55-4db7-b2e-default-rtdb.europe-west1.firebasedatabase.app";
+        const $ = id => document.getElementById(id);
+        let items = [], current = null;
+
+        function pick(p, keys) {
+            for (const k of keys) if (p[k] !== undefined && p[k] !== null && p[k] !== '' && typeof p[k] !== 'object') return p[k];
+            return '';
+        }
+        const nameOf = p => String(pick(p, ['name', 'nom', 'title', 'titre', 'label', 'n']));
+        const descOf = p => String(pick(p, ['desc', 'description', 'details', 'detail', 'd']));
+        function priceOf(p) {
+            const v = pick(p, ['price', 'prix', 'pr', 'p']);
+            if (v === '') return '';
+            return isNaN(Number(v)) ? String(v) : Number(v).toLocaleString('fr-FR') + ' FCFA';
+        }
+        function imgOf(p) {
+            let v = p.img || p.image || p.photo || p.pic || p.images || p.imgs || p.photos || p.url || '';
+            if (Array.isArray(v)) v = v[0];
+            if (v && typeof v === 'object') v = Object.values(v)[0];
+            return (typeof v === 'string' && (/^https?:/.test(v) || /^data:image/.test(v))) ? v : '';
+        }
+        function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+        async function load() {
+            try {
+                const r = await fetch(DB + '/products.json?orderBy=%22$key%22&limitToLast=40');
+                if (!r.ok) { $('msg').textContent = "Impossible de lire les articles (erreur " + r.status + ")."; return; }
+                const data = await r.json();
+                items = Object.entries(data || {})
+                    .filter(([k, p]) => p && typeof p === 'object')
+                    .map(([k, p]) => Object.assign({_id: k}, p))
+                    .sort((a, b) => (b.date || 0) - (a.date || 0));
+                if (!items.length) { $('msg').textContent = "Aucun article trouvé."; return; }
+                $('msg').textContent = items.length + " article(s). Touche celui à promouvoir.";
+                const grid = $('grid'); grid.innerHTML = "";
+                items.forEach((p, i) => {
+                    const c = document.createElement('div');
+                    c.className = 'card';
+                    const im = imgOf(p);
+                    const nm = nameOf(p) || ("Article " + String(p._id).slice(0, 6));
+                    c.innerHTML = (im ? `<img src="${esc(im)}" alt="">` : `<div class="noimg">🛍️</div>`) +
+                        `<div class="nm">${esc(nm)}</div><div class="pr">${esc(priceOf(p))}</div>`;
+                    c.onclick = () => choose(i, c);
+                    grid.appendChild(c);
+                });
+            } catch (e) {
+                $('msg').textContent = "Connexion impossible à la base de la boutique.";
+            }
+        }
+
+        function choose(i, el) {
+            current = items[i];
+            document.querySelectorAll('.card').forEach(x => x.classList.remove('sel'));
+            el.classList.add('sel');
+            $('panel').style.display = 'block';
+            $('chosen').textContent = "Article choisi : " + (nameOf(current) || current._id);
+            $('promo').value = "";
+            $('raw').textContent = JSON.stringify(current, (k, v) => (typeof v === 'string' && v.length > 120 ? v.slice(0, 120) + '…' : v), 2);
+            $('panel').scrollIntoView({behavior: 'smooth'});
+        }
+
+        async function gen() {
+            if (!current) return;
+            const name = nameOf(current), price = priceOf(current), desc = descOf(current);
+            const info = "Article : " + (name || "(nom non trouvé)") + ". Prix : " + (price || "(non indiqué)") + ". Description : " + (desc || "(aucune)") + ".";
+            const msg = "Écris un message de promotion court et attirant, style WhatsApp, avec quelques emojis, en français, pour la boutique BOUBA STORE. " +
+                info + " N'invente aucun prix, aucune marque et aucune information absente. Termine en invitant à commander.";
+            $('promo').value = "Fof-IA écrit ta promotion…";
+            try {
+                const r = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: msg, history: [], lang: "Français", image: ""})
+                });
+                const d = await r.json();
+                let t = String(d.response || "").replace(/\*\*/g, "").trim();
+                const tel = $('tel').value.trim(), lien = $('lien').value.trim();
+                if (tel) t += "\n\n📞 " + tel;
+                if (lien) t += "\n🛒 " + lien;
+                $('promo').value = t;
+            } catch (e) { $('promo').value = "Erreur : le serveur ne répond pas."; }
+        }
+
+        async function copyIt() {
+            const t = $('promo').value;
+            if (!t) return;
+            try { await navigator.clipboard.writeText(t); alert("Texte copié ✅"); }
+            catch (e) { $('promo').select(); alert("Sélectionne le texte et copie-le."); }
+        }
+        async function shareIt() {
+            const t = $('promo').value;
+            if (!t) return;
+            try {
+                if (navigator.share) await navigator.share({text: t});
+                else window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank");
+            } catch (e) {}
+        }
+        function toggleRaw() { const r = $('raw'); r.style.display = r.style.display === 'block' ? 'none' : 'block'; }
+
+        load();
+    </script>
+</body>
+</html>
