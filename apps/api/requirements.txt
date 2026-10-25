@@ -6,3 +6,4 @@ groq
 python-dotenv
 huggingface_hub
 pillow
+requests
